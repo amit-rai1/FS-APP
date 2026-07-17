@@ -4,12 +4,12 @@ import {
   FaLaptopCode, FaServer, FaBrain,
   FaGraduationCap, FaBriefcase, FaRocket, FaUsers, FaCertificate,
   FaPhone, FaMapMarkerAlt, FaWhatsapp, FaCheckCircle,
-  FaHtml5, FaJs, FaReact, FaNodeJs, FaPython, FaGitAlt, FaDocker,
+  FaReact, FaNodeJs, FaPython, FaGitAlt, FaDocker,
   FaBars, FaTimes, FaArrowRight, FaShieldAlt, FaProjectDiagram,
   FaStar, FaQuoteRight, FaLanguage, FaChalkboardTeacher,
   FaLaptop, FaBookOpen, FaLightbulb, FaArrowUp, FaTrophy,
-  FaExclamationTriangle, FaClock, FaUserGraduate, FaChair,
-  FaUserShield, FaSignOutAlt,
+  FaExclamationTriangle, FaChair,
+  FaUserShield, FaSignOutAlt, FaSearch, FaDownload, FaEye, FaFilter,
 } from "react-icons/fa";
 import { SiMongodb, SiExpress, SiTailwindcss } from "react-icons/si";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fs-be-s83x.onrender.com";
@@ -321,11 +321,37 @@ function AdminLoginModal({ onClose, onLogin }) {
   );
 }
 
+/* ======================= ENQUIRY DETAIL MODAL ======================= */
+function EnquiryDetailModal({ enquiry, onClose }) {
+  if (!enquiry) return null;
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal admin-detail-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaEye /> Enquiry Details</h2>
+        <div className="admin-detail-grid">
+          <div><label>Name</label><p>{enquiry.name}</p></div>
+          <div><label>Phone</label><p>{enquiry.phone}</p></div>
+          <div><label>Course</label><p>{enquiry.course || "N/A"}</p></div>
+          <div><label>Year</label><p>{enquiry.year || "N/A"}</p></div>
+          <div className="full"><label>College</label><p>{enquiry.college || "N/A"}</p></div>
+          <div className="full"><label>Message / Query</label><p>{enquiry.message || "N/A"}</p></div>
+          <div className="full"><label>Submitted On</label><p>{new Date(enquiry.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p></div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ======================= ADMIN DASHBOARD ======================= */
 function AdminDashboard({ onLogout }) {
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [courseFilter, setCourseFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("mlkpg_admin_token");
@@ -341,11 +367,49 @@ function AdminDashboard({ onLogout }) {
         }
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setError("Failed to load enquiries");
         setLoading(false);
       });
   }, []);
+
+  const filtered = enquiries.filter((enq) => {
+    const term = search.toLowerCase();
+    const matchesSearch =
+      (enq.name || "").toLowerCase().includes(term) ||
+      (enq.phone || "").toLowerCase().includes(term) ||
+      (enq.message || "").toLowerCase().includes(term) ||
+      (enq.college || "").toLowerCase().includes(term);
+    const matchesCourse = courseFilter ? (enq.course || "") === courseFilter : true;
+    const matchesYear = yearFilter ? (enq.year || "") === yearFilter : true;
+    return matchesSearch && matchesCourse && matchesYear;
+  });
+
+  const exportCSV = () => {
+    const headers = ["Name", "Phone", "Course", "Year", "College", "Message", "Date"];
+    const rows = filtered.map((enq) => [
+      enq.name,
+      enq.phone,
+      enq.course || "N/A",
+      enq.year || "N/A",
+      enq.college || "N/A",
+      enq.message || "N/A",
+      new Date(enq.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const courses = [...new Set(enquiries.map((e) => e.course).filter(Boolean))];
+  const years = [...new Set(enquiries.map((e) => e.year).filter(Boolean))];
 
   return (
     <section className="admin-dashboard">
@@ -354,36 +418,59 @@ function AdminDashboard({ onLogout }) {
           <h2><FaUserShield /> Admin Dashboard</h2>
           <button className="btn btn-ghost" onClick={onLogout}><FaSignOutAlt /> Logout</button>
         </div>
+
+        <div className="admin-toolbar">
+          <div className="admin-search">
+            <FaSearch />
+            <input type="text" placeholder="Search by name, phone, message..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="admin-filters">
+            <div className="filter-group"><FaFilter /><select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}><option value="">All Courses</option>{courses.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+            <div className="filter-group"><FaFilter /><select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}><option value="">All Years</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
+          </div>
+          <button className="btn btn-primary export-btn" onClick={exportCSV}><FaDownload /> Export CSV</button>
+        </div>
+
         {loading ? (
           <p className="admin-loading">Loading enquiries...</p>
         ) : error ? (
           <p className="admin-error">{error}</p>
-        ) : enquiries.length === 0 ? (
-          <p className="admin-empty">No enquiries found.</p>
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr><th>#</th><th>Name</th><th>Phone</th><th>Course</th><th>Year</th><th>College</th><th>Message</th><th>Date</th></tr>
-              </thead>
-              <tbody>
-                {enquiries.map((enq, i) => (
-                  <tr key={enq._id}>
-                    <td>{i + 1}</td>
-                    <td>{enq.name}</td>
-                    <td>{enq.phone}</td>
-                    <td>{enq.course || "N/A"}</td>
-                    <td>{enq.year || "N/A"}</td>
-                    <td>{enq.college || "N/A"}</td>
-                    <td>{enq.message || "N/A"}</td>
-                    <td>{new Date(enq.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="admin-stats">
+              <div className="admin-stat"><span>{enquiries.length}</span><label>Total Enquiries</label></div>
+              <div className="admin-stat"><span>{filtered.length}</span><label>Filtered Results</label></div>
+            </div>
+            {filtered.length === 0 ? (
+              <p className="admin-empty">No enquiries match your filters.</p>
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr><th>#</th><th>Name</th><th>Phone</th><th>Course</th><th>Year</th><th>Date</th><th>Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((enq, i) => (
+                      <tr key={enq._id}>
+                        <td>{i + 1}</td>
+                        <td>{enq.name}</td>
+                        <td>{enq.phone}</td>
+                        <td>{enq.course || "N/A"}</td>
+                        <td>{enq.year || "N/A"}</td>
+                        <td>{new Date(enq.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                        <td><button className="btn btn-ghost view-btn" onClick={() => setSelected(enq)}><FaEye /> View</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
+      <AnimatePresence>
+        {selected && <EnquiryDetailModal enquiry={selected} onClose={() => setSelected(null)} />}
+      </AnimatePresence>
     </section>
   );
 }
