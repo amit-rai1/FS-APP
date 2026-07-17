@@ -10,6 +10,7 @@ import {
   FaLaptop, FaBookOpen, FaLightbulb, FaArrowUp, FaTrophy,
   FaExclamationTriangle, FaChair,
   FaUserShield, FaSignOutAlt, FaSearch, FaDownload, FaEye, FaFilter,
+  FaHome, FaChartBar, FaEnvelope, FaCog,
 } from "react-icons/fa";
 import { SiMongodb, SiExpress, SiTailwindcss } from "react-icons/si";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fs-be-s83x.onrender.com";
@@ -343,6 +344,50 @@ function EnquiryDetailModal({ enquiry, onClose }) {
   );
 }
 
+/* ======================= ADMIN SIDEBAR ======================= */
+function AdminSidebar({ active, onNavigate, onLogout }) {
+  const items = [
+    { id: "dashboard", icon: <FaHome />, label: "Dashboard" },
+    { id: "enquiries", icon: <FaEnvelope />, label: "Enquiries" },
+    { id: "analytics", icon: <FaChartBar />, label: "Analytics" },
+    { id: "settings", icon: <FaCog />, label: "Settings" },
+  ];
+  return (
+    <aside className="admin-sidebar">
+      <div className="admin-sidebar-brand">
+        <img src="/logo.png" alt="MLKPG Logo" />
+        <div>
+          <strong>MLKPG Admin</strong>
+          <span>Enquiry Portal</span>
+        </div>
+      </div>
+      <nav className="admin-sidebar-nav">
+        {items.map((item) => (
+          <button key={item.id} className={`admin-sidebar-link ${active === item.id ? "active" : ""}`} onClick={() => onNavigate(item.id)}>
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="admin-sidebar-footer">
+        <button className="btn btn-ghost logout-btn" onClick={onLogout}><FaSignOutAlt /> Logout</button>
+      </div>
+    </aside>
+  );
+}
+
+/* ======================= ADMIN FOOTER ======================= */
+function AdminFooter() {
+  return (
+    <footer className="admin-footer">
+      <div className="container">
+        <p>© {new Date().getFullYear()} MLKPG College Balrampur • Admin Dashboard</p>
+        <p className="admin-footer-sub">Built with ❤️ React + Vite</p>
+      </div>
+    </footer>
+  );
+}
+
 /* ======================= ADMIN DASHBOARD ======================= */
 function AdminDashboard({ onLogout }) {
   const [enquiries, setEnquiries] = useState([]);
@@ -352,6 +397,7 @@ function AdminDashboard({ onLogout }) {
   const [courseFilter, setCourseFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [selected, setSelected] = useState(null);
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
     const token = localStorage.getItem("mlkpg_admin_token");
@@ -411,14 +457,38 @@ function AdminDashboard({ onLogout }) {
   const courses = [...new Set(enquiries.map((e) => e.course).filter(Boolean))];
   const years = [...new Set(enquiries.map((e) => e.year).filter(Boolean))];
 
-  return (
-    <section className="admin-dashboard">
-      <div className="container">
-        <div className="admin-header">
-          <h2><FaUserShield /> Admin Dashboard</h2>
-          <button className="btn btn-ghost" onClick={onLogout}><FaSignOutAlt /> Logout</button>
-        </div>
+  const courseCounts = enquiries.reduce((acc, enq) => {
+    acc[enq.course || "Not selected"] = (acc[enq.course || "Not selected"] || 0) + 1;
+    return acc;
+  }, {});
 
+  const renderContent = () => {
+    if (activeTab === "analytics") {
+      return (
+        <>
+          <div className="admin-stats">
+            <div className="admin-stat"><span>{enquiries.length}</span><label>Total Enquiries</label></div>
+            <div className="admin-stat"><span>{filtered.length}</span><label>Filtered Results</label></div>
+            <div className="admin-stat"><span>{Object.keys(courseCounts).length}</span><label>Courses</label></div>
+          </div>
+          <div className="admin-chart-card">
+            <h3>Enquiries by Course</h3>
+            <div className="admin-bars">
+              {Object.entries(courseCounts).map(([course, count]) => (
+                <div key={course} className="admin-bar-row">
+                  <span>{course || "Not selected"}</span>
+                  <div className="admin-bar-wrap"><div className="admin-bar" style={{ width: `${enquiries.length ? (count / enquiries.length) * 100 : 0}%` }}></div></div>
+                  <strong>{count}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
         <div className="admin-toolbar">
           <div className="admin-search">
             <FaSearch />
@@ -467,11 +537,33 @@ function AdminDashboard({ onLogout }) {
             )}
           </>
         )}
+      </>
+    );
+  };
+
+  return (
+    <div className="admin-layout">
+      <AdminSidebar active={activeTab} onNavigate={setActiveTab} onLogout={onLogout} />
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <div className="admin-topbar-left">
+            <h2><FaUserShield /> {activeTab === "dashboard" ? "Dashboard" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+          </div>
+          <div className="admin-topbar-right">
+            <span className="admin-badge"><FaUserShield /> Admin</span>
+          </div>
+        </header>
+        <section className="admin-content">
+          <div className="container">
+            {renderContent()}
+          </div>
+        </section>
+        <AdminFooter />
       </div>
       <AnimatePresence>
         {selected && <EnquiryDetailModal enquiry={selected} onClose={() => setSelected(null)} />}
       </AnimatePresence>
-    </section>
+    </div>
   );
 }
 
