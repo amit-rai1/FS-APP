@@ -13,6 +13,7 @@ import {
   FaHome, FaChartBar, FaEnvelope, FaCog, FaUserPlus, FaEdit, FaTrash,
   FaMoneyBillWave, FaFileInvoice, FaPrint, FaUserGraduate, FaUniversity,
   FaCalendarCheck, FaCheck, FaTimes as FaCross,
+  FaBook, FaQuestionCircle, FaPlayCircle, FaFilePdf, FaLink,
 } from "react-icons/fa";
 import { SiMongodb, SiExpress, SiTailwindcss } from "react-icons/si";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fs-be-s83x.onrender.com";
@@ -280,6 +281,7 @@ function ScrollToTop() {
 function AdminLoginModal({ onClose, onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -287,11 +289,16 @@ function AdminLoginModal({ onClose, onLogin }) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    // Mobile keyboards often auto-capitalize or add spaces
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
     try {
       const res = await fetch(`${API_BASE}/api/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: cleanUsername, password: cleanPassword }),
       });
       const data = await res.json();
       if (data.success) {
@@ -302,7 +309,7 @@ function AdminLoginModal({ onClose, onLogin }) {
         setError(data.error || "Invalid credentials");
       }
     } catch (err) {
-      setError("Login failed. Please try again.");
+      setError("Network error. Please check your internet connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -315,8 +322,37 @@ function AdminLoginModal({ onClose, onLogin }) {
         <h2><FaUserShield /> Admin Login</h2>
         {error && <p className="admin-error">{error}</p>}
         <form onSubmit={handleSubmit}>
-          <div className="form-group"><label>Username</label><input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required /></div>
-          <div className="form-group"><label>Password</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
+          <div className="form-group">
+            <label>Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck="false"
+              autoComplete="username"
+            />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <div className="password-input-wrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck="false"
+                autoComplete="current-password"
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowPassword((v) => !v)}>
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={loading}>{loading ? "Logging in..." : "Login"}</button>
         </form>
       </motion.div>
@@ -352,6 +388,8 @@ function AdminSidebar({ active, onNavigate, onLogout }) {
     { id: "dashboard", icon: <FaHome />, label: "Dashboard" },
     { id: "enquiries", icon: <FaEnvelope />, label: "Enquiries" },
     { id: "students", icon: <FaUserGraduate />, label: "Students" },
+    { id: "contents", icon: <FaBook />, label: "Contents" },
+    { id: "quizzes", icon: <FaQuestionCircle />, label: "Quizzes" },
     { id: "attendance", icon: <FaCalendarCheck />, label: "Attendance" },
     { id: "payments", icon: <FaMoneyBillWave />, label: "Payments" },
     { id: "reports", icon: <FaChartBar />, label: "Reports" },
@@ -434,6 +472,7 @@ function StudentFormModal({ student, onClose, onSave }) {
             <div><label>Course</label><select name="course" value={form.course} onChange={handleChange}><option value="">-- Select --</option><option value="BCA">BCA</option><option value="BSc Computer Science">BSc Computer Science</option></select></div>
             <div><label>Year</label><select name="year" value={form.year} onChange={handleChange}><option value="">-- Select --</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option></select></div>
             <div><label>Fee (₹)</label><input type="number" name="fee" value={form.fee} onChange={handleChange} /></div>
+            <div><label>Password</label><input type="text" name="password" value={form.password} onChange={handleChange} /></div>
             <div className="full"><label>Address</label><textarea name="address" value={form.address} onChange={handleChange} rows="2"></textarea></div>
           </div>
           <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 16 }} disabled={saving}>{saving ? "Saving..." : "Save Student"}</button>
@@ -533,6 +572,361 @@ function ReceiptModal({ payment, student, onClose }) {
   );
 }
 
+/* ======================= STUDENT LOGIN MODAL ======================= */
+function StudentLoginModal({ onClose, onLogin }) {
+  const [crNo, setCrNo] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/student/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ crNo: crNo.trim(), password: password.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem("mlkpg_student_token", data.token);
+        localStorage.setItem("mlkpg_student", JSON.stringify(data.student));
+        onLogin(data.student);
+        onClose();
+      } else {
+        setError(data.error || "Invalid credentials");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaUserGraduate /> Student Login</h2>
+        {error && <p className="admin-error">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group"><label>CR Number</label><input type="text" value={crNo} onChange={(e) => setCrNo(e.target.value)} required autoCapitalize="off" /></div>
+          <div className="form-group">
+            <label>Password</label>
+            <div className="password-input-wrap">
+              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <button type="button" className="password-toggle" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Hide" : "Show"}</button>
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>{loading ? "Logging in..." : "Login"}</button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ======================= CONTENT FORM MODAL ======================= */
+function ContentFormModal({ content, onClose, onSave }) {
+  const [form, setForm] = useState(content || { title: "", description: "", course: "", year: "", type: "video", url: "" });
+  const [saving, setSaving] = useState(false);
+  const token = localStorage.getItem("mlkpg_admin_token");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const url = content ? `${API_BASE}/api/admin/contents/${content._id}` : `${API_BASE}/api/admin/contents`;
+    const method = content ? "PUT" : "POST";
+    try {
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(form) });
+      const data = await res.json();
+      if (data.success) { onSave(data.content); onClose(); }
+      else alert(data.error);
+    } catch { alert("Failed to save content"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal admin-detail-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaBook /> {content ? "Edit Content" : "Add Content"}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="admin-detail-grid">
+            <div className="full"><label>Title</label><input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
+            <div><label>Type</label><select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}><option value="video">Video</option><option value="pdf">PDF</option><option value="link">Link</option><option value="notes">Notes</option></select></div>
+            <div><label>Course</label><select value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })}><option value="">All</option><option value="BCA">BCA</option><option value="BSc Computer Science">BSc Computer Science</option></select></div>
+            <div><label>Year</label><select value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}><option value="">All</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option></select></div>
+            <div className="full"><label>URL / Link</label><input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} required /></div>
+            <div className="full"><label>Description</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows="2"></textarea></div>
+          </div>
+          <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 16 }} disabled={saving}>{saving ? "Saving..." : "Save Content"}</button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ======================= QUIZ FORM MODAL ======================= */
+function QuizFormModal({ quiz, onClose, onSave }) {
+  const [form, setForm] = useState(quiz || { title: "", course: "", year: "", questions: [] });
+  const [saving, setSaving] = useState(false);
+  const token = localStorage.getItem("mlkpg_admin_token");
+
+  const addQuestion = () => setForm({ ...form, questions: [...form.questions, { question: "", options: ["", ""], answer: 0 }] });
+  const updateQuestion = (i, field, value) => {
+    const qs = [...form.questions];
+    qs[i][field] = value;
+    setForm({ ...form, questions: qs });
+  };
+  const updateOption = (qi, oi, value) => {
+    const qs = [...form.questions];
+    qs[qi].options[oi] = value;
+    setForm({ ...form, questions: qs });
+  };
+  const removeQuestion = (i) => {
+    const qs = [...form.questions];
+    qs.splice(i, 1);
+    setForm({ ...form, questions: qs });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const url = quiz ? `${API_BASE}/api/admin/quizzes/${quiz._id}` : `${API_BASE}/api/admin/quizzes`;
+    const method = quiz ? "PUT" : "POST";
+    try {
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(form) });
+      const data = await res.json();
+      if (data.success) { onSave(data.quiz); onClose(); }
+      else alert(data.error);
+    } catch { alert("Failed to save quiz"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal admin-detail-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaQuestionCircle /> {quiz ? "Edit Quiz" : "Add Quiz"}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="admin-detail-grid">
+            <div className="full"><label>Quiz Title</label><input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required /></div>
+            <div><label>Course</label><select value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })}><option value="">All</option><option value="BCA">BCA</option><option value="BSc Computer Science">BSc Computer Science</option></select></div>
+            <div><label>Year</label><select value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })}><option value="">All</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option></select></div>
+          </div>
+          <div style={{ marginTop: 16 }}>
+            {form.questions.map((q, i) => (
+              <div key={i} className="quiz-question-card">
+                <div className="admin-detail-grid">
+                  <div className="full"><label>Question {i + 1}</label><input type="text" value={q.question} onChange={(e) => updateQuestion(i, "question", e.target.value)} required /></div>
+                  {q.options.map((opt, oi) => (
+                    <div key={oi}><label>Option {oi + 1}</label><input type="text" value={opt} onChange={(e) => updateOption(i, oi, e.target.value)} required /></div>
+                  ))}
+                  <div className="full"><label>Correct Option</label><select value={q.answer} onChange={(e) => updateQuestion(i, "answer", Number(e.target.value))}>{q.options.map((_, oi) => <option key={oi} value={oi}>Option {oi + 1}</option>)}</select></div>
+                </div>
+                <button type="button" className="btn btn-ghost view-btn" style={{ marginTop: 8 }} onClick={() => removeQuestion(i)}><FaTrash /> Remove</button>
+              </div>
+            ))}
+            <button type="button" className="btn btn-ghost export-btn" onClick={addQuestion}><FaUserPlus /> Add Question</button>
+          </div>
+          <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 16 }} disabled={saving || form.questions.length === 0}>{saving ? "Saving..." : "Save Quiz"}</button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ======================= STUDENT DASHBOARD ======================= */
+function StudentDashboard({ student, onLogout }) {
+  const [activeTab, setActiveTab] = useState("contents");
+  const [contents, setContents] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  const [attempts, setAttempts] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [result, setResult] = useState(null);
+
+  const token = localStorage.getItem("mlkpg_student_token");
+
+  const fetchData = async () => {
+    try {
+      const headers = { Authorization: token };
+      const [cRes, qRes, aRes, pRes] = await Promise.all([
+        fetch(`${API_BASE}/api/student/contents`, { headers }),
+        fetch(`${API_BASE}/api/student/quizzes`, { headers }),
+        fetch(`${API_BASE}/api/student/attendance`, { headers }),
+        fetch(`${API_BASE}/api/student/payments`, { headers }),
+      ]);
+      const cData = await cRes.json();
+      const qData = await qRes.json();
+      const aData = await aRes.json();
+      const pData = await pRes.json();
+      if (cData.success) setContents(cData.contents);
+      if (qData.success) { setQuizzes(qData.quizzes); setAttempts(qData.attempts); }
+      if (aData.success) setAttendance(aData.attendance);
+      if (pData.success) setPayments(pData.payments);
+    } catch { /* ignore */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const startQuiz = (quiz) => { setActiveQuiz(quiz); setAnswers(new Array(quiz.questions.length).fill(-1)); setResult(null); };
+
+  const submitQuiz = async () => {
+    if (answers.some((a) => a === -1)) { alert("Please answer all questions"); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/student/quizzes/${activeQuiz._id}/attempt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: token },
+        body: JSON.stringify({ answers }),
+      });
+      const data = await res.json();
+      if (data.success) { setResult(data.attempt); setAttempts((prev) => [...prev, data.attempt]); }
+    } catch { alert("Failed to submit quiz"); }
+  };
+
+  const presentDays = attendance.filter((a) => a.status === "present").length;
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+
+  if (loading) return <div className="admin-loading">Loading...</div>;
+
+  return (
+    <div className="admin-layout">
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar-brand"><img src="/logo.png" alt="Logo" /><div><strong>Student Panel</strong><span>{student.name}</span></div></div>
+        <nav className="admin-sidebar-nav">
+          {[{ id: "contents", icon: <FaBook />, label: "Contents" }, { id: "quizzes", icon: <FaQuestionCircle />, label: "Quizzes & Marks" }, { id: "attendance", icon: <FaCalendarCheck />, label: "Attendance" }, { id: "payments", icon: <FaMoneyBillWave />, label: "Payments" }].map((item) => (
+            <button key={item.id} className={`admin-sidebar-link ${activeTab === item.id ? "active" : ""}`} onClick={() => setActiveTab(item.id)}>{item.icon}<span>{item.label}</span></button>
+          ))}
+        </nav>
+        <div className="admin-sidebar-footer"><button className="btn btn-ghost logout-btn" onClick={onLogout}><FaSignOutAlt /> Logout</button></div>
+      </aside>
+      <div className="admin-main">
+        <header className="admin-topbar"><h2><FaUserGraduate /> {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></header>
+        <section className="admin-content">
+          <div className="container">
+            {activeTab === "contents" && (
+              <>
+                <div className="admin-stats">
+                  <div className="admin-stat"><span>{contents.length}</span><label>Total Contents</label></div>
+                  <div className="admin-stat"><span>{presentDays}</span><label>Present Days</label></div>
+                  <div className="admin-stat"><span>₹{totalPaid}</span><label>Paid</label></div>
+                </div>
+                <div className="content-grid">
+                  {contents.map((c) => (
+                    <div key={c._id} className="content-card">
+                      <div className="content-icon">{c.type === "video" ? <FaPlayCircle /> : c.type === "pdf" ? <FaFilePdf /> : c.type === "notes" ? <FaBook /> : <FaLink />}</div>
+                      <h4>{c.title}</h4>
+                      <p>{c.description}</p>
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">Open {c.type}</a>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {activeTab === "quizzes" && (
+              <>
+                {activeQuiz ? (
+                  <div className="quiz-panel">
+                    <h3>{activeQuiz.title}</h3>
+                    {activeQuiz.questions.map((q, i) => (
+                      <div key={i} className="quiz-question-card">
+                        <p><strong>Q{i + 1}. {q.question}</strong></p>
+                        {q.options.map((opt, oi) => (
+                          <label key={oi} className="quiz-option"><input type="radio" name={`q-${i}`} checked={answers[i] === oi} onChange={() => { const a = [...answers]; a[i] = oi; setAnswers(a); }} /> {opt}</label>
+                        ))}
+                      </div>
+                    ))}
+                    {result ? (
+                      <div className="admin-chart-card" style={{ marginTop: 16 }}>
+                        <h3>Result</h3>
+                        <p>You scored <strong>{result.score}</strong> out of <strong>{result.total}</strong></p>
+                        <button className="btn btn-ghost" onClick={() => { setActiveQuiz(null); setResult(null); }}>Back to Quizzes</button>
+                      </div>
+                    ) : (
+                      <button className="btn btn-primary" onClick={submitQuiz}>Submit Quiz</button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-stats">
+                      <div className="admin-stat"><span>{quizzes.length}</span><label>Total Quizzes</label></div>
+                      <div className="admin-stat"><span>{attempts.length}</span><label>Attempted</label></div>
+                    </div>
+                    <div className="admin-table-wrap">
+                      <table className="admin-table">
+                        <thead><tr><th>Quiz</th><th>Questions</th><th>Status</th><th>Score</th><th>Action</th></tr></thead>
+                        <tbody>
+                          {quizzes.map((q) => {
+                            const att = attempts.find((a) => a.quizId === q._id);
+                            return (
+                              <tr key={q._id}>
+                                <td>{q.title}</td>
+                                <td>{q.questions.length}</td>
+                                <td>{q.attempted || att ? "Attempted" : "Not Attempted"}</td>
+                                <td>{att ? `${att.score}/${att.total}` : "—"}</td>
+                                <td>{att ? <span className="attendance-badge present">Done</span> : <button className="btn btn-primary view-btn" onClick={() => startQuiz(q)}>Start</button>}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {attempts.length > 0 && (
+                      <div className="admin-chart-card" style={{ marginTop: 24 }}>
+                        <h3>Marks History</h3>
+                        <div className="admin-table-wrap">
+                          <table className="admin-table">
+                            <thead><tr><th>Quiz</th><th>Score</th><th>Total</th><th>Date</th></tr></thead>
+                            <tbody>
+                              {attempts.map((a) => {
+                                const q = quizzes.find((x) => x._id === a.quizId);
+                                return <tr key={a._id}><td>{q?.title || "Quiz"}</td><td>{a.score}</td><td>{a.total}</td><td>{new Date(a.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td></tr>;
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+            {activeTab === "attendance" && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Date</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {attendance.map((a) => (<tr key={a._id}><td>{a.date}</td><td><span className={`attendance-badge ${a.status}`}>{a.status}</span></td></tr>))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {activeTab === "payments" && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Receipt No</th><th>Amount</th><th>Mode</th><th>Date</th></tr></thead>
+                  <tbody>
+                    {payments.map((p) => (<tr key={p._id}><td>{p.receiptNo}</td><td>₹{p.amount}</td><td>{p.mode}</td><td>{new Date(p.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td></tr>))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+        <AdminFooter />
+      </div>
+    </div>
+  );
+}
+
 /* ======================= ADMIN DASHBOARD ======================= */
 function AdminDashboard({ onLogout }) {
   const [enquiries, setEnquiries] = useState([]);
@@ -551,6 +945,10 @@ function AdminDashboard({ onLogout }) {
   const [paymentStudent, setPaymentStudent] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [contents, setContents] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
+  const [contentForm, setContentForm] = useState(null);
+  const [quizForm, setQuizForm] = useState(null);
 
   const token = localStorage.getItem("mlkpg_admin_token");
 
@@ -573,6 +971,12 @@ function AdminDashboard({ onLogout }) {
       if (payData.success) setPayments(payData.payments);
       if (repData.success) setReport(repData.report);
       if (attData.success) setAttendance(attData.attendance);
+      const conRes = await fetch(`${API_BASE}/api/admin/contents`, { headers: { Authorization: `Bearer ${token}` } });
+      const quiRes = await fetch(`${API_BASE}/api/admin/quizzes`, { headers: { Authorization: `Bearer ${token}` } });
+      const conData = await conRes.json();
+      const quiData = await quiRes.json();
+      if (conData.success) setContents(conData.contents);
+      if (quiData.success) setQuizzes(quiData.quizzes);
     } catch {
       setError("Failed to load dashboard data");
     } finally {
@@ -832,6 +1236,57 @@ function AdminDashboard({ onLogout }) {
       );
     }
 
+    if (activeTab === "contents") {
+      return (
+        <>
+          <div className="admin-toolbar">
+            <button className="btn btn-primary export-btn" onClick={() => setContentForm({})}><FaUserPlus /> Add Content</button>
+          </div>
+          <div className="content-grid">
+            {contents.map((c) => (
+              <div key={c._id} className="content-card">
+                <div className="content-icon">{c.type === "video" ? <FaPlayCircle /> : c.type === "pdf" ? <FaFilePdf /> : c.type === "notes" ? <FaBook /> : <FaLink />}</div>
+                <h4>{c.title}</h4>
+                <p>{c.description}</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost view-btn" onClick={() => setContentForm(c)}><FaEdit /> Edit</button>
+                  <button className="btn btn-ghost view-btn" onClick={async () => { if (!confirm("Delete?")) return; await fetch(`${API_BASE}/api/admin/contents/${c._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); setContents((prev) => prev.filter((x) => x._id !== c._id)); }}><FaTrash /> Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    if (activeTab === "quizzes") {
+      return (
+        <>
+          <div className="admin-toolbar">
+            <button className="btn btn-primary export-btn" onClick={() => setQuizForm({})}><FaUserPlus /> Add Quiz</button>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Title</th><th>Course</th><th>Questions</th><th>Actions</th></tr></thead>
+              <tbody>
+                {quizzes.map((q) => (
+                  <tr key={q._id}>
+                    <td>{q.title}</td>
+                    <td>{q.course || "All"}</td>
+                    <td>{q.questions.length}</td>
+                    <td>
+                      <button className="btn btn-ghost view-btn" onClick={() => setQuizForm(q)}><FaEdit /> Edit</button>
+                      <button className="btn btn-ghost view-btn" onClick={async () => { if (!confirm("Delete?")) return; await fetch(`${API_BASE}/api/admin/quizzes/${q._id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }); setQuizzes((prev) => prev.filter((x) => x._id !== q._id)); }} style={{ marginLeft: 6 }}><FaTrash /> Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      );
+    }
+
     if (activeTab === "reports") {
       if (!report) return <p className="admin-loading">Loading report...</p>;
       return (
@@ -952,6 +1407,8 @@ function AdminDashboard({ onLogout }) {
       <AnimatePresence>
         {selected && <EnquiryDetailModal enquiry={selected} onClose={() => setSelected(null)} />}
         {studentForm && <StudentFormModal student={studentForm._id ? studentForm : null} onClose={() => setStudentForm(null)} onSave={(s) => { setStudents((prev) => studentForm._id ? prev.map((x) => x._id === s._id ? s : x) : [s, ...prev]); setStudentForm(null); }} />}
+        {contentForm && <ContentFormModal content={contentForm._id ? contentForm : null} onClose={() => setContentForm(null)} onSave={(c) => { setContents((prev) => contentForm._id ? prev.map((x) => x._id === c._id ? c : x) : [c, ...prev]); setContentForm(null); }} />}
+        {quizForm && <QuizFormModal quiz={quizForm._id ? quizForm : null} onClose={() => setQuizForm(null)} onSave={(q) => { setQuizzes((prev) => quizForm._id ? prev.map((x) => x._id === q._id ? q : x) : [q, ...prev]); setQuizForm(null); }} />}
         {paymentStudent && <PaymentModal student={paymentStudent} onClose={() => setPaymentStudent(null)} onSave={(p) => { setPayments((prev) => [p, ...prev]); setStudents((prev) => prev.map((x) => x._id === p.studentId ? { ...x, paid: (x.paid || 0) + p.amount } : x)); setPaymentStudent(null); }} />}
         {receipt && <ReceiptModal payment={receipt.payment} student={receipt.student} onClose={() => setReceipt(null)} />}
       </AnimatePresence>
@@ -961,23 +1418,38 @@ function AdminDashboard({ onLogout }) {
 
 export default function App() {
   const [adminView, setAdminView] = useState(false);
+  const [studentView, setStudentView] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showStudentLogin, setShowStudentLogin] = useState(false);
+  const [studentUser, setStudentUser] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("mlkpg_admin_token");
-    if (token) setAdminView(true);
+    const aToken = localStorage.getItem("mlkpg_admin_token");
+    const sToken = localStorage.getItem("mlkpg_student_token");
+    const sData = localStorage.getItem("mlkpg_student");
+    if (aToken) setAdminView(true);
+    else if (sToken && sData) { setStudentUser(JSON.parse(sData)); setStudentView(true); }
   }, []);
 
-  const handleLogout = () => {
+  const handleAdminLogout = () => {
     localStorage.removeItem("mlkpg_admin_token");
     setAdminView(false);
+  };
+
+  const handleStudentLogout = () => {
+    localStorage.removeItem("mlkpg_student_token");
+    localStorage.removeItem("mlkpg_student");
+    setStudentUser(null);
+    setStudentView(false);
   };
 
   return (
     <>
       <div className="bg-glow"></div>
       {adminView ? (
-        <AdminDashboard onLogout={handleLogout} />
+        <AdminDashboard onLogout={handleAdminLogout} />
+      ) : studentView ? (
+        <StudentDashboard student={studentUser} onLogout={handleStudentLogout} />
       ) : (
         <>
           <TopBanner />
@@ -993,10 +1465,16 @@ export default function App() {
           <EnquiryForm />
           <Footer />
           <ScrollToTop />
+          <div style={{ position: "fixed", bottom: 70, right: 22, zIndex: 99 }}>
+            <button className="btn btn-primary" style={{ borderRadius: 100, padding: "10px 18px", fontSize: "0.8rem" }} onClick={() => setShowStudentLogin(true)}>
+              <FaUserGraduate /> Student Login
+            </button>
+          </div>
         </>
       )}
       <AnimatePresence>
         {showLogin && <AdminLoginModal onClose={() => setShowLogin(false)} onLogin={() => setAdminView(true)} />}
+        {showStudentLogin && <StudentLoginModal onClose={() => setShowStudentLogin(false)} onLogin={(s) => { setStudentUser(s); setStudentView(true); }} />}
       </AnimatePresence>
     </>
   );
