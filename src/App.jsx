@@ -12,6 +12,7 @@ import {
   FaUserShield, FaSignOutAlt, FaSearch, FaDownload, FaEye, FaFilter,
   FaHome, FaChartBar, FaEnvelope, FaCog, FaUserPlus, FaEdit, FaTrash,
   FaMoneyBillWave, FaFileInvoice, FaPrint, FaUserGraduate, FaUniversity,
+  FaCalendarCheck, FaCheck, FaTimes as FaCross,
 } from "react-icons/fa";
 import { SiMongodb, SiExpress, SiTailwindcss } from "react-icons/si";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fs-be-s83x.onrender.com";
@@ -351,6 +352,7 @@ function AdminSidebar({ active, onNavigate, onLogout }) {
     { id: "dashboard", icon: <FaHome />, label: "Dashboard" },
     { id: "enquiries", icon: <FaEnvelope />, label: "Enquiries" },
     { id: "students", icon: <FaUserGraduate />, label: "Students" },
+    { id: "attendance", icon: <FaCalendarCheck />, label: "Attendance" },
     { id: "payments", icon: <FaMoneyBillWave />, label: "Payments" },
     { id: "reports", icon: <FaChartBar />, label: "Reports" },
     { id: "analytics", icon: <FaChartBar />, label: "Analytics" },
@@ -516,7 +518,7 @@ function ReceiptModal({ payment, student, onClose }) {
           <table className="receipt-table">
             <thead><tr><th>Particulars</th><th>Amount</th></tr></thead>
             <tbody>
-              <tr><td>Course Fee Payment ({payment.mode === "online" ? "Online" : "Offline"})</td><td>₹{payment.amount}</td></tr>
+              <tr><td>FullStack Development Payment ({payment.mode === "online" ? "Online" : "Offline"})</td><td>₹{payment.amount}</td></tr>
               <tr><td><strong>Total</strong></td><td><strong>₹{payment.amount}</strong></td></tr>
             </tbody>
           </table>
@@ -536,6 +538,7 @@ function AdminDashboard({ onLogout }) {
   const [enquiries, setEnquiries] = useState([]);
   const [students, setStudents] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -547,25 +550,29 @@ function AdminDashboard({ onLogout }) {
   const [studentForm, setStudentForm] = useState(null);
   const [paymentStudent, setPaymentStudent] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
 
   const token = localStorage.getItem("mlkpg_admin_token");
 
   const fetchData = async () => {
     try {
-      const [enqRes, stuRes, payRes, repRes] = await Promise.all([
+      const [enqRes, stuRes, payRes, repRes, attRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/enquiries`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/api/admin/students`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/api/admin/payments`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/api/admin/reports`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/admin/attendance?date=${attendanceDate}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       const enqData = await enqRes.json();
       const stuData = await stuRes.json();
       const payData = await payRes.json();
       const repData = await repRes.json();
+      const attData = await attRes.json();
       if (enqData.success) setEnquiries(enqData.enquiries);
       if (stuData.success) setStudents(stuData.students);
       if (payData.success) setPayments(payData.payments);
       if (repData.success) setReport(repData.report);
+      if (attData.success) setAttendance(attData.attendance);
     } catch {
       setError("Failed to load dashboard data");
     } finally {
@@ -576,6 +583,10 @@ function AdminDashboard({ onLogout }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "attendance") fetchData();
+  }, [attendanceDate, activeTab]);
 
   const filteredEnquiries = enquiries.filter((enq) => {
     const term = search.toLowerCase();
@@ -740,6 +751,87 @@ function AdminDashboard({ onLogout }) {
       );
     }
 
+    if (activeTab === "attendance") {
+      const attendanceMap = {};
+      attendance.forEach((a) => { attendanceMap[a.studentId] = a; });
+
+      const handleStatusChange = async (studentId, crNo, status) => {
+        const existing = attendanceMap[studentId];
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/attendance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ studentId, date: attendanceDate, status, crNo }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            setAttendance((prev) => {
+              const filtered = prev.filter((a) => !(a.studentId === studentId && a.date === attendanceDate));
+              return [data.attendance, ...filtered];
+            });
+          }
+        } catch { alert("Failed to mark attendance"); }
+      };
+
+      const stats = { present: 0, absent: 0, leave: 0, unmarked: 0 };
+      students.forEach((s) => {
+        const a = attendanceMap[s._id];
+        if (a) stats[a.status]++;
+        else stats.unmarked++;
+      });
+
+      return (
+        <>
+          <div className="admin-toolbar">
+            <div className="filter-group"><FaCalendarCheck />
+              <input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} style={{ border: "none", background: "transparent", outline: "none", fontFamily: "inherit" }} />
+            </div>
+            <button className="btn btn-ghost export-btn" onClick={() => {
+              const rows = students.map((s) => {
+                const a = attendanceMap[s._id];
+                return [s.crNo, s.name, attendanceDate, a ? a.status : "unmarked"];
+              });
+              const csv = [["CR No", "Name", "Date", "Status"], ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+              const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `attendance-${attendanceDate}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            }}><FaDownload /> Export</button>
+          </div>
+          <div className="admin-stats">
+            <div className="admin-stat"><span>{stats.present}</span><label>Present</label></div>
+            <div className="admin-stat"><span>{stats.absent}</span><label>Absent</label></div>
+            <div className="admin-stat"><span>{stats.leave}</span><label>Leave</label></div>
+            <div className="admin-stat"><span>{stats.unmarked}</span><label>Unmarked</label></div>
+          </div>
+          {students.length === 0 ? <p className="admin-empty">No students found.</p> : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>CR No</th><th>Name</th><th>Course</th><th>Year</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {students.map((s) => {
+                    const a = attendanceMap[s._id];
+                    return (
+                      <tr key={s._id}>
+                        <td>{s.crNo}</td>
+                        <td>{s.name}</td>
+                        <td>{s.course || "N/A"}</td>
+                        <td>{s.year || "N/A"}</td>
+                        <td>{a ? <span className={`attendance-badge ${a.status}`}>{a.status}</span> : "—"}</td>
+                        <td>
+                          <button className="btn btn-ghost view-btn attendance-present" onClick={() => handleStatusChange(s._id, s.crNo, "present")}><FaCheck /> Present</button>
+                          <button className="btn btn-ghost view-btn attendance-absent" onClick={() => handleStatusChange(s._id, s.crNo, "absent")} style={{ marginLeft: 6 }}><FaCross /> Absent</button>
+                          <button className="btn btn-ghost view-btn attendance-leave" onClick={() => handleStatusChange(s._id, s.crNo, "leave")} style={{ marginLeft: 6 }}>Leave</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      );
+    }
+
     if (activeTab === "reports") {
       if (!report) return <p className="admin-loading">Loading report...</p>;
       return (
@@ -752,6 +844,14 @@ function AdminDashboard({ onLogout }) {
             <div className="admin-stat"><span>₹{report.offlineTotal}</span><label>Offline</label></div>
           </div>
           <div className="admin-chart-card">
+            <h3>Attendance Summary (This Month)</h3>
+            <div className="admin-stats" style={{ marginBottom: 0 }}>
+              <div className="admin-stat"><span>{report.attendanceCounts?.present || 0}</span><label>Present</label></div>
+              <div className="admin-stat"><span>{report.attendanceCounts?.absent || 0}</span><label>Absent</label></div>
+              <div className="admin-stat"><span>{report.attendanceCounts?.leave || 0}</span><label>Leave</label></div>
+            </div>
+          </div>
+          <div className="admin-chart-card" style={{ marginTop: 24 }}>
             <h3>Course Wise Summary</h3>
             <div className="admin-table-wrap">
               <table className="admin-table">
