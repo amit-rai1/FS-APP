@@ -193,6 +193,44 @@ function WhyFullstack() {
   return (<section className="section why-section" id="why"><div className="container"><motion.div className="text-center" {...reveal()}><span className="section-tag">करियर / Career</span><h2 className="section-title">क्यों <span className="gradient-text">फुलस्टैक डेवलपमेंट?</span><span className="section-title-en">Why Fullstack Development?</span></h2><p className="section-subtitle">टेक इंडस्ट्री का सबसे तेज़ और भरोसेमंद रास्ता — जॉब-ओरिएंटेड, फ्यूचर-प्रूफ।</p></motion.div><div className="why-grid">{cards.map((c, i) => (<motion.div key={c.en} className="why-card" {...reveal(0.1 * (i + 1))}><div className="ic">{c.icon}</div><h3>{c.hi}</h3><span className="why-en-tag">{c.en}</span><p>{c.desc}</p></motion.div>))}</div><motion.div className="why-highlight" {...reveal(0.5)}><div className="why-highlight-inner"><FaLightbulb className="why-highlight-icon" /><p><strong>सिर्फ ₹3000</strong> — 6 महीने का कम्प्लीट फुलस्टैक कोर्स। 10+ प्रोजेक्ट्स, AI ट्रेनिंग, 100% जॉब असिस्टेंस।<br /><span style={{ color: "var(--accent)", fontSize: "0.85rem" }}>नोट: फीस BCA विभाग में जमा करनी है। | Fee to be submitted at BCA Dept.</span></p></div></motion.div></div></section>);
 }
 
+/* ======================= STUDENT PORTAL FEATURES ======================= */
+function StudentPortalFeatures() {
+  const features = [
+    { icon: <FaQuestionCircle />, hi: "ऑनलाइन क्विज़", en: "Online Quizzes", desc: "हर टॉपिक के बाद इंटरैक्टिव क्विज़ दें और अपने मार्क्स तुरंत देखें।" },
+    { icon: <FaCalendarCheck />, hi: "ऑनलाइन एटेंडेंस", en: "Online Attendance", desc: "अपनी रोज़ाना हाज़िरी, छुट्टी और उपस्थिति रिकॉर्ड कभी भी देखें।" },
+    { icon: <FaBook />, hi: "स्टडी कंटेंट", en: "Study Content", desc: "वीडियो, PDF, नोट्स और लिंक्स — सब कुछ एक ही जगह।" },
+    { icon: <FaLaptopCode />, hi: "असाइनमेंट्स & प्रोजेक्ट्स", en: "Assignments & Projects", desc: "रियल-वर्ल्ड प्रोजेक्ट्स और असाइनमेंट्स से सीखें और अपलोड करें।" },
+    { icon: <FaFileInvoice />, hi: "फीस रिकॉर्ड", en: "Fee Records", desc: "अपनी फीस रसीदें, बकाया और भुगतान इतिहास ऑनलाइन देखें।" },
+    { icon: <FaUserGraduate />, hi: "स्टूडेंट डैशबोर्ड", en: "Student Dashboard", desc: "अपना पर्सनल लॉगिन — CR नंबर से लॉगिन करें और सब कुछ एक्सेस करें।" },
+  ];
+  return (
+    <section className="section student-portal-section" id="student-portal">
+      <div className="container">
+        <motion.div className="text-center" {...reveal()}>
+          <span className="section-tag">स्टूडेंट पोर्टल / Student Portal</span>
+          <h2 className="section-title">सब कुछ <span className="gradient-text">ऑनलाइन</span> एक जगह<span className="section-title-en">Everything Online in One Place</span></h2>
+          <p className="section-subtitle">MLKPG कॉलेज का स्टूडेंट पोर्टल — क्विज़, एटेंडेंस, कंटेंट, असाइनमेंट्स सब कुछ मोबाइल और डेस्कटॉप पर।</p>
+        </motion.div>
+        <div className="student-portal-grid">
+          {features.map((f, i) => (
+            <motion.div key={f.en} className="student-portal-card" {...reveal(0.1 * (i + 1))}>
+              <div className="portal-icon">{f.icon}</div>
+              <h3>{f.hi}</h3>
+              <span className="portal-en">{f.en}</span>
+              <p>{f.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+        <motion.div className="text-center" style={{ marginTop: 36 }} {...reveal(0.5)}>
+          <button className="btn btn-primary btn-lg" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })}>
+            <FaUserGraduate /> स्टूडेंट लॉगिन करें / Student Login
+          </button>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 /* ======================= AI SECTION ======================= */
 function AISection() {
   const pts = [{ hi: "AI — आपका कोडिंग असिस्टेंट", en: "AI as Your Coding Assistant", desc: "GitHub Copilot और ChatGPT से 5x तेज़ कोडिंग और डीबगिंग।" },{ hi: "AI-पावर्ड ऐप्स बनाएँ", en: "Build AI-Powered Apps", desc: "OpenAI APIs और चैटबॉट्स को फुलस्टैक प्रोजेक्ट्स में इंटीग्रेट करें।" },{ hi: "AI युग में रेलेवेंट रहें", en: "Stay Relevant in the AI Era", desc: "AI का उपयोग करने वाले डेवलपर्स आगे रहेंगे।" },{ hi: "स्मार्ट प्रॉब्लम सॉल्विंग", en: "Smart Problem Solving", desc: "रिसर्च, टेस्टिंग और नए कॉन्सेप्ट्स के लिए AI का उपयोग करें।" }];
@@ -1461,6 +1499,7 @@ export default function App() {
           <Trainer />
           <WhyFullstack />
           <AISection />
+          <StudentPortalFeatures />
           <Testimonial />
           <EnquiryForm />
           <Footer />
