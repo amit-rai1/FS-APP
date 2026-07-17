@@ -505,7 +505,7 @@
 
 /* Layout */
 .admin-layout { display: flex; min-height: 100vh; background: var(--bg-2); }
-.admin-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.admin-main { flex: 1; display: flex; flex-direction: column; min-width: 0; margin-left: 260px; }
 .admin-content { flex: 1; padding: 28px 0; }
 
 /* Sidebar */
@@ -578,12 +578,30 @@
 .admin-footer { background: #0f172a; color: #94a3b8; padding: 20px 0; text-align: center; font-size: 0.8rem; }
 .admin-footer-sub { font-size: 0.72rem; color: #64748b; margin-top: 4px; }
 
+/* Receipt */
+.receipt-body { background: #fff; color: #000; padding: 24px; border-radius: 8px; font-family: Arial, sans-serif; }
+.receipt-header { text-align: center; margin-bottom: 20px; }
+.receipt-logo { max-width: 80px; margin-bottom: 10px; }
+.receipt-header h3 { margin: 0; font-size: 1rem; }
+.receipt-header p { margin: 4px 0 0; font-size: 0.8rem; }
+.receipt-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.receipt-table td, .receipt-table th { border: 1px solid #000; padding: 8px; font-size: 0.85rem; }
+.receipt-note { text-align: center; font-size: 0.75rem; color: #555; margin-top: 16px; }
+.receipt-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+
+/* Form inputs inside modal */
+.admin-detail-grid input, .admin-detail-grid select, .admin-detail-grid textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.88rem;
+}
+.admin-detail-grid input:focus, .admin-detail-grid select:focus, .admin-detail-grid textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
 @media (max-width: 900px) {
   .admin-sidebar { width: 100%; position: relative; height: auto; flex-direction: row; align-items: center; padding: 12px 16px; }
   .admin-sidebar-brand { border-bottom: none; padding: 0; }
   .admin-sidebar-nav { flex-direction: row; padding: 0; flex-wrap: wrap; justify-content: center; }
   .admin-sidebar-footer { border-top: none; padding: 0; }
   .admin-layout { flex-direction: column; }
+  .admin-main { margin-left: 0; }
   .admin-topbar { padding: 14px 18px; }
   .admin-bar-row { grid-template-columns: 100px 1fr 30px; }
 }

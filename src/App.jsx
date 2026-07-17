@@ -10,7 +10,8 @@ import {
   FaLaptop, FaBookOpen, FaLightbulb, FaArrowUp, FaTrophy,
   FaExclamationTriangle, FaChair,
   FaUserShield, FaSignOutAlt, FaSearch, FaDownload, FaEye, FaFilter,
-  FaHome, FaChartBar, FaEnvelope, FaCog,
+  FaHome, FaChartBar, FaEnvelope, FaCog, FaUserPlus, FaEdit, FaTrash,
+  FaMoneyBillWave, FaFileInvoice, FaPrint, FaUserGraduate, FaUniversity,
 } from "react-icons/fa";
 import { SiMongodb, SiExpress, SiTailwindcss } from "react-icons/si";
 const API_BASE = import.meta.env.VITE_API_URL || "https://fs-be-s83x.onrender.com";
@@ -349,8 +350,10 @@ function AdminSidebar({ active, onNavigate, onLogout }) {
   const items = [
     { id: "dashboard", icon: <FaHome />, label: "Dashboard" },
     { id: "enquiries", icon: <FaEnvelope />, label: "Enquiries" },
+    { id: "students", icon: <FaUserGraduate />, label: "Students" },
+    { id: "payments", icon: <FaMoneyBillWave />, label: "Payments" },
+    { id: "reports", icon: <FaChartBar />, label: "Reports" },
     { id: "analytics", icon: <FaChartBar />, label: "Analytics" },
-    { id: "settings", icon: <FaCog />, label: "Settings" },
   ];
   return (
     <aside className="admin-sidebar">
@@ -358,7 +361,7 @@ function AdminSidebar({ active, onNavigate, onLogout }) {
         <img src="/logo.png" alt="MLKPG Logo" />
         <div>
           <strong>MLKPG Admin</strong>
-          <span>Enquiry Portal</span>
+          <span>Student & Enquiry Portal</span>
         </div>
       </div>
       <nav className="admin-sidebar-nav">
@@ -388,9 +391,152 @@ function AdminFooter() {
   );
 }
 
+/* ======================= STUDENT FORM MODAL ======================= */
+function StudentFormModal({ student, onClose, onSave }) {
+  const [form, setForm] = useState(student || { crNo: "", name: "", fatherName: "", email: "", phone: "", address: "", course: "", year: "", college: "MLKPG कॉलेज बलरामपुर", fee: 3000, paid: 0 });
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: name === "fee" || name === "paid" ? Number(value) : value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const token = localStorage.getItem("mlkpg_admin_token");
+    const url = student ? `${API_BASE}/api/admin/students/${student._id}` : `${API_BASE}/api/admin/students`;
+    const method = student ? "PUT" : "POST";
+    try {
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(form) });
+      const data = await res.json();
+      if (data.success) { onSave(data.student); onClose(); }
+      else { alert(data.error); }
+    } catch {
+      alert("Failed to save student");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal admin-detail-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaUserPlus /> {student ? "Edit Student" : "Add Student"}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="admin-detail-grid">
+            <div><label>CR No *</label><input type="text" name="crNo" value={form.crNo} onChange={handleChange} required /></div>
+            <div><label>Student Name *</label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
+            <div><label>Father's Name</label><input type="text" name="fatherName" value={form.fatherName} onChange={handleChange} /></div>
+            <div><label>Email</label><input type="email" name="email" value={form.email} onChange={handleChange} /></div>
+            <div><label>Phone *</label><input type="tel" name="phone" value={form.phone} onChange={handleChange} required /></div>
+            <div><label>Course</label><select name="course" value={form.course} onChange={handleChange}><option value="">-- Select --</option><option value="BCA">BCA</option><option value="BSc Computer Science">BSc Computer Science</option></select></div>
+            <div><label>Year</label><select name="year" value={form.year} onChange={handleChange}><option value="">-- Select --</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option></select></div>
+            <div><label>Fee (₹)</label><input type="number" name="fee" value={form.fee} onChange={handleChange} /></div>
+            <div className="full"><label>Address</label><textarea name="address" value={form.address} onChange={handleChange} rows="2"></textarea></div>
+          </div>
+          <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 16 }} disabled={saving}>{saving ? "Saving..." : "Save Student"}</button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ======================= PAYMENT MODAL ======================= */
+function PaymentModal({ student, onClose, onSave }) {
+  const [amount, setAmount] = useState("");
+  const [mode, setMode] = useState("offline");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const token = localStorage.getItem("mlkpg_admin_token");
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId: student._id, amount: Number(amount), mode, note }),
+      });
+      const data = await res.json();
+      if (data.success) { onSave(data.payment); onClose(); }
+      else { alert(data.error); }
+    } catch {
+      alert("Failed to record payment");
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <h2><FaMoneyBillWave /> Record Payment</h2>
+        <p style={{ marginBottom: 12, color: "var(--text-dim)" }}>Student: <strong>{student.name}</strong> ({student.crNo})<br />Due: ₹{student.fee - (student.paid || 0)}</p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group"><label>Amount (₹)</label><input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} required min="1" /></div>
+          <div className="form-group"><label>Mode</label><select value={mode} onChange={(e) => setMode(e.target.value)}><option value="offline">Offline (Cash)</option><option value="online">Online (UPI/Card)</option></select></div>
+          <div className="form-group"><label>Note</label><input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" /></div>
+          <button type="submit" className="btn btn-primary btn-full" disabled={saving}>{saving ? "Saving..." : "Record Payment"}</button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ======================= RECEIPT MODAL ======================= */
+function ReceiptModal({ payment, student, onClose }) {
+  if (!payment || !student) return null;
+  const printReceipt = () => {
+    const content = document.getElementById("receipt-print").innerHTML;
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>Receipt ${payment.receiptNo}</title><style>body{font-family:Arial,sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}td,th{border:1px solid #000;padding:8px;text-align:left;}.center{text-align:center;}.logo{max-width:80px;}</style></head><body>${content}</body></html>`);
+    w.document.close();
+    w.print();
+  };
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <motion.div className="admin-modal admin-detail-modal" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} onClick={(e) => e.stopPropagation()}>
+        <button className="admin-modal-close" onClick={onClose}><FaTimes /></button>
+        <div id="receipt-print" className="receipt-body">
+          <div className="receipt-header">
+            <img src="/logo.png" alt="MLKPG Logo" className="receipt-logo" />
+            <h3>M.L.K. (P.G.) COLLEGE, BALRAMPUR (U.P.) - 271201</h3>
+            <p>Course Fee Receipt {new Date().getFullYear()}-{new Date().getFullYear() + 1}</p>
+          </div>
+          <table className="receipt-table">
+            <tbody>
+              <tr><td><strong>Receipt No.</strong></td><td>{payment.receiptNo}</td><td><strong>Date</strong></td><td>{new Date(payment.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td></tr>
+              <tr><td><strong>Student Name</strong></td><td colSpan="3">{student.name}</td></tr>
+              <tr><td><strong>Father's Name</strong></td><td colSpan="3">{student.fatherName || "N/A"}</td></tr>
+              <tr><td><strong>CR No.</strong></td><td>{student.crNo}</td><td><strong>Phone</strong></td><td>{student.phone}</td></tr>
+              <tr><td><strong>Course</strong></td><td>{student.course || "N/A"}</td><td><strong>Year</strong></td><td>{student.year || "N/A"}</td></tr>
+            </tbody>
+          </table>
+          <table className="receipt-table">
+            <thead><tr><th>Particulars</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr><td>Course Fee Payment ({payment.mode === "online" ? "Online" : "Offline"})</td><td>₹{payment.amount}</td></tr>
+              <tr><td><strong>Total</strong></td><td><strong>₹{payment.amount}</strong></td></tr>
+            </tbody>
+          </table>
+          <p className="receipt-note">Note: This is a computer generated receipt.</p>
+        </div>
+        <div className="receipt-actions">
+          <button className="btn btn-primary" onClick={printReceipt}><FaPrint /> Print</button>
+          <button className="btn btn-ghost" onClick={onClose}>Close</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ======================= ADMIN DASHBOARD ======================= */
 function AdminDashboard({ onLogout }) {
   const [enquiries, setEnquiries] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -398,28 +544,40 @@ function AdminDashboard({ onLogout }) {
   const [yearFilter, setYearFilter] = useState("");
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [studentForm, setStudentForm] = useState(null);
+  const [paymentStudent, setPaymentStudent] = useState(null);
+  const [receipt, setReceipt] = useState(null);
+
+  const token = localStorage.getItem("mlkpg_admin_token");
+
+  const fetchData = async () => {
+    try {
+      const [enqRes, stuRes, payRes, repRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/enquiries`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/admin/students`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/admin/payments`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/admin/reports`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const enqData = await enqRes.json();
+      const stuData = await stuRes.json();
+      const payData = await payRes.json();
+      const repData = await repRes.json();
+      if (enqData.success) setEnquiries(enqData.enquiries);
+      if (stuData.success) setStudents(stuData.students);
+      if (payData.success) setPayments(payData.payments);
+      if (repData.success) setReport(repData.report);
+    } catch {
+      setError("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem("mlkpg_admin_token");
-    fetch(`${API_BASE}/api/admin/enquiries`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setEnquiries(data.enquiries);
-        } else {
-          setError(data.error || "Failed to load enquiries");
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load enquiries");
-        setLoading(false);
-      });
+    fetchData();
   }, []);
 
-  const filtered = enquiries.filter((enq) => {
+  const filteredEnquiries = enquiries.filter((enq) => {
     const term = search.toLowerCase();
     const matchesSearch =
       (enq.name || "").toLowerCase().includes(term) ||
@@ -431,27 +589,46 @@ function AdminDashboard({ onLogout }) {
     return matchesSearch && matchesCourse && matchesYear;
   });
 
-  const exportCSV = () => {
-    const headers = ["Name", "Phone", "Course", "Year", "College", "Message", "Date"];
-    const rows = filtered.map((enq) => [
-      enq.name,
-      enq.phone,
-      enq.course || "N/A",
-      enq.year || "N/A",
-      enq.college || "N/A",
-      enq.message || "N/A",
-      new Date(enq.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-    ]);
+  const filteredStudents = students.filter((s) =>
+    (s.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.crNo || "").toLowerCase().includes(search.toLowerCase()) ||
+    (s.phone || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const exportCSV = (data, filename, headers, mapRow) => {
+    const rows = data.map(mapRow);
     const csv = [headers, ...rows].map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `enquiries-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const exportEnquiriesCSV = () => {
+    exportCSV(filteredEnquiries, `enquiries-${new Date().toISOString().slice(0, 10)}.csv`, ["Name", "Phone", "Course", "Year", "College", "Message", "Date"], (enq) => [
+      enq.name, enq.phone, enq.course || "N/A", enq.year || "N/A", enq.college || "N/A", enq.message || "N/A", new Date(enq.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+    ]);
+  };
+
+  const exportStudentsCSV = () => {
+    exportCSV(filteredStudents, `students-${new Date().toISOString().slice(0, 10)}.csv`, ["CR No", "Name", "Father", "Phone", "Course", "Year", "Fee", "Paid", "Due"], (s) => [
+      s.crNo, s.name, s.fatherName || "N/A", s.phone, s.course || "N/A", s.year || "N/A", s.fee, s.paid || 0, s.fee - (s.paid || 0),
+    ]);
+  };
+
+  const handleDeleteStudent = async (id) => {
+    if (!confirm("Are you sure you want to delete this student?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/students/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.success) { setStudents((prev) => prev.filter((s) => s._id !== id)); setPayments((prev) => prev.filter((p) => p.studentId !== id)); }
+      else alert(data.error);
+    } catch { alert("Failed to delete student"); }
   };
 
   const courses = [...new Set(enquiries.map((e) => e.course).filter(Boolean))];
@@ -468,7 +645,7 @@ function AdminDashboard({ onLogout }) {
         <>
           <div className="admin-stats">
             <div className="admin-stat"><span>{enquiries.length}</span><label>Total Enquiries</label></div>
-            <div className="admin-stat"><span>{filtered.length}</span><label>Filtered Results</label></div>
+            <div className="admin-stat"><span>{filteredEnquiries.length}</span><label>Filtered Results</label></div>
             <div className="admin-stat"><span>{Object.keys(courseCounts).length}</span><label>Courses</label></div>
           </div>
           <div className="admin-chart-card">
@@ -487,6 +664,116 @@ function AdminDashboard({ onLogout }) {
       );
     }
 
+    if (activeTab === "students") {
+      return (
+        <>
+          <div className="admin-toolbar">
+            <div className="admin-search"><FaSearch /><input type="text" placeholder="Search by name, CR no, phone..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+            <button className="btn btn-primary export-btn" onClick={() => setStudentForm({})}><FaUserPlus /> Add Student</button>
+            <button className="btn btn-ghost export-btn" onClick={exportStudentsCSV}><FaDownload /> Export CSV</button>
+          </div>
+          {filteredStudents.length === 0 ? (
+            <p className="admin-empty">No students found.</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr><th>CR No</th><th>Name</th><th>Phone</th><th>Course</th><th>Year</th><th>Fee</th><th>Paid</th><th>Due</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map((s) => (
+                    <tr key={s._id}>
+                      <td>{s.crNo}</td>
+                      <td>{s.name}</td>
+                      <td>{s.phone}</td>
+                      <td>{s.course || "N/A"}</td>
+                      <td>{s.year || "N/A"}</td>
+                      <td>₹{s.fee}</td>
+                      <td>₹{s.paid || 0}</td>
+                      <td>₹{s.fee - (s.paid || 0)}</td>
+                      <td>
+                        <button className="btn btn-ghost view-btn" onClick={() => setPaymentStudent(s)}><FaMoneyBillWave /> Pay</button>
+                        <button className="btn btn-ghost view-btn" onClick={() => setStudentForm(s)} style={{ marginLeft: 6 }}><FaEdit /> Edit</button>
+                        <button className="btn btn-ghost view-btn" onClick={() => handleDeleteStudent(s._id)} style={{ marginLeft: 6 }}><FaTrash /> Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    if (activeTab === "payments") {
+      return (
+        <>
+          <div className="admin-toolbar">
+            <div className="admin-search"><FaSearch /><input type="text" placeholder="Search by receipt no, CR no..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+          </div>
+          {payments.filter((p) => (p.receiptNo || "").toLowerCase().includes(search.toLowerCase()) || (p.crNo || "").toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+            <p className="admin-empty">No payments found.</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>Receipt No</th><th>CR No</th><th>Amount</th><th>Mode</th><th>Date</th><th>Action</th></tr></thead>
+                <tbody>
+                  {payments.filter((p) => (p.receiptNo || "").toLowerCase().includes(search.toLowerCase()) || (p.crNo || "").toLowerCase().includes(search.toLowerCase())).map((p) => {
+                    const stu = students.find((s) => s._id === p.studentId);
+                    return (
+                      <tr key={p._id}>
+                        <td>{p.receiptNo}</td>
+                        <td>{p.crNo}</td>
+                        <td>₹{p.amount}</td>
+                        <td>{p.mode}</td>
+                        <td>{new Date(p.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
+                        <td><button className="btn btn-ghost view-btn" onClick={() => setReceipt({ payment: p, student: stu })}><FaFileInvoice /> Receipt</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      );
+    }
+
+    if (activeTab === "reports") {
+      if (!report) return <p className="admin-loading">Loading report...</p>;
+      return (
+        <>
+          <div className="admin-stats">
+            <div className="admin-stat"><span>{report.totalStudents}</span><label>Total Students</label></div>
+            <div className="admin-stat"><span>₹{report.totalCollected}</span><label>Total Collected</label></div>
+            <div className="admin-stat"><span>₹{report.totalDue}</span><label>Total Due</label></div>
+            <div className="admin-stat"><span>₹{report.onlineTotal}</span><label>Online</label></div>
+            <div className="admin-stat"><span>₹{report.offlineTotal}</span><label>Offline</label></div>
+          </div>
+          <div className="admin-chart-card">
+            <h3>Course Wise Summary</h3>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>Course</th><th>Students</th><th>Total Fee</th><th>Total Paid</th><th>Due</th></tr></thead>
+                <tbody>
+                  {report.courseWise.map((c) => (
+                    <tr key={c._id || "none"}>
+                      <td>{c._id || "Not selected"}</td>
+                      <td>{c.count}</td>
+                      <td>₹{c.totalFee}</td>
+                      <td>₹{c.totalPaid}</td>
+                      <td>₹{c.totalFee - c.totalPaid}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         <div className="admin-toolbar">
@@ -498,7 +785,7 @@ function AdminDashboard({ onLogout }) {
             <div className="filter-group"><FaFilter /><select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}><option value="">All Courses</option>{courses.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
             <div className="filter-group"><FaFilter /><select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}><option value="">All Years</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
           </div>
-          <button className="btn btn-primary export-btn" onClick={exportCSV}><FaDownload /> Export CSV</button>
+          <button className="btn btn-primary export-btn" onClick={exportEnquiriesCSV}><FaDownload /> Export CSV</button>
         </div>
 
         {loading ? (
@@ -509,9 +796,11 @@ function AdminDashboard({ onLogout }) {
           <>
             <div className="admin-stats">
               <div className="admin-stat"><span>{enquiries.length}</span><label>Total Enquiries</label></div>
-              <div className="admin-stat"><span>{filtered.length}</span><label>Filtered Results</label></div>
+              <div className="admin-stat"><span>{filteredEnquiries.length}</span><label>Filtered Results</label></div>
+              <div className="admin-stat"><span>{students.length}</span><label>Total Students</label></div>
+              <div className="admin-stat"><span>₹{report?.totalCollected || 0}</span><label>Collected</label></div>
             </div>
-            {filtered.length === 0 ? (
+            {filteredEnquiries.length === 0 ? (
               <p className="admin-empty">No enquiries match your filters.</p>
             ) : (
               <div className="admin-table-wrap">
@@ -520,7 +809,7 @@ function AdminDashboard({ onLogout }) {
                     <tr><th>#</th><th>Name</th><th>Phone</th><th>Course</th><th>Year</th><th>Date</th><th>Action</th></tr>
                   </thead>
                   <tbody>
-                    {filtered.map((enq, i) => (
+                    {filteredEnquiries.map((enq, i) => (
                       <tr key={enq._id}>
                         <td>{i + 1}</td>
                         <td>{enq.name}</td>
@@ -562,6 +851,9 @@ function AdminDashboard({ onLogout }) {
       </div>
       <AnimatePresence>
         {selected && <EnquiryDetailModal enquiry={selected} onClose={() => setSelected(null)} />}
+        {studentForm && <StudentFormModal student={studentForm._id ? studentForm : null} onClose={() => setStudentForm(null)} onSave={(s) => { setStudents((prev) => studentForm._id ? prev.map((x) => x._id === s._id ? s : x) : [s, ...prev]); setStudentForm(null); }} />}
+        {paymentStudent && <PaymentModal student={paymentStudent} onClose={() => setPaymentStudent(null)} onSave={(p) => { setPayments((prev) => [p, ...prev]); setStudents((prev) => prev.map((x) => x._id === p.studentId ? { ...x, paid: (x.paid || 0) + p.amount } : x)); setPaymentStudent(null); }} />}
+        {receipt && <ReceiptModal payment={receipt.payment} student={receipt.student} onClose={() => setReceipt(null)} />}
       </AnimatePresence>
     </div>
   );
