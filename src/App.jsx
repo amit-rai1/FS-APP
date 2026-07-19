@@ -786,6 +786,7 @@ function StudentDashboard({ student, onLogout }) {
   const [attendance, setAttendance] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
@@ -837,17 +838,23 @@ function StudentDashboard({ student, onLogout }) {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
+      {sidebarOpen && <div className="admin-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="admin-sidebar-brand"><img src="/logo.png" alt="Logo" /><div><strong>Student Panel</strong><span>{student.name}</span></div></div>
         <nav className="admin-sidebar-nav">
           {[{ id: "contents", icon: <FaBook />, label: "Contents" }, { id: "quizzes", icon: <FaQuestionCircle />, label: "Quizzes & Marks" }, { id: "attendance", icon: <FaCalendarCheck />, label: "Attendance" }, { id: "payments", icon: <FaMoneyBillWave />, label: "Payments" }].map((item) => (
-            <button key={item.id} className={`admin-sidebar-link ${activeTab === item.id ? "active" : ""}`} onClick={() => setActiveTab(item.id)}>{item.icon}<span>{item.label}</span></button>
+            <button key={item.id} className={`admin-sidebar-link ${activeTab === item.id ? "active" : ""}`} onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}>{item.icon}<span>{item.label}</span></button>
           ))}
         </nav>
-        <div className="admin-sidebar-footer"><button className="btn btn-ghost logout-btn" onClick={onLogout}><FaSignOutAlt /> Logout</button></div>
+        <div className="admin-sidebar-footer"><button className="btn btn-ghost logout-btn" onClick={() => { setSidebarOpen(false); onLogout(); }}><FaSignOutAlt /> Logout</button></div>
       </aside>
       <div className="admin-main">
-        <header className="admin-topbar"><h2><FaUserGraduate /> {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2></header>
+        <header className="admin-topbar">
+          <div className="admin-topbar-left">
+            <button className="admin-sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)}><FaBars /></button>
+            <h2><FaUserGraduate /> {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+          </div>
+        </header>
         <section className="admin-content">
           <div className="container">
             {activeTab === "contents" && (
@@ -974,6 +981,7 @@ function AdminDashboard({ onLogout }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -1425,10 +1433,14 @@ function AdminDashboard({ onLogout }) {
 
   return (
     <div className="admin-layout">
-      <AdminSidebar active={activeTab} onNavigate={setActiveTab} onLogout={onLogout} />
+      {sidebarOpen && <div className="admin-sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      <div className={`admin-sidebar-wrap ${sidebarOpen ? "open" : ""}`}>
+        <AdminSidebar active={activeTab} onNavigate={(id) => { setActiveTab(id); setSidebarOpen(false); }} onLogout={() => { setSidebarOpen(false); onLogout(); }} />
+      </div>
       <div className="admin-main">
         <header className="admin-topbar">
           <div className="admin-topbar-left">
+            <button className="admin-sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)}><FaBars /></button>
             <h2><FaUserShield /> {activeTab === "dashboard" ? "Dashboard" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
           </div>
           <div className="admin-topbar-right">
