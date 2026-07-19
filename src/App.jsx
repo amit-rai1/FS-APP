@@ -471,7 +471,7 @@ function AdminFooter() {
 
 /* ======================= STUDENT FORM MODAL ======================= */
 function StudentFormModal({ student, onClose, onSave }) {
-  const [form, setForm] = useState(student || { crNo: "", name: "", fatherName: "", email: "", phone: "", address: "", course: "", year: "", college: "MLKPG कॉलेज बलरामपुर", fee: 3000, paid: 0 });
+  const [form, setForm] = useState(student || { crNo: "", name: "", fatherName: "", email: "", phone: "", address: "", course: "", year: "", college: "MLKPG कॉलेज बलरामपुर", fee: 3000, paid: 0, password: "" });
   const [saving, setSaving] = useState(false);
 
   const handleChange = (e) => {
@@ -565,12 +565,165 @@ function PaymentModal({ student, onClose, onSave }) {
 /* ======================= RECEIPT MODAL ======================= */
 function ReceiptModal({ payment, student, onClose }) {
   if (!payment || !student) return null;
-  const printReceipt = () => {
-    const content = document.getElementById("receipt-print").innerHTML;
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Receipt ${payment.receiptNo}</title><style>body{font-family:Arial,sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:20px;}td,th{border:1px solid #000;padding:8px;text-align:left;}.center{text-align:center;}.logo{max-width:80px;}</style></head><body>${content}</body></html>`);
+  const printReceipt = async () => {
+    // Convert logo to base64 for reliable printing
+    let logoSrc = "";
+    try {
+      const response = await fetch(`${window.location.origin}/logo.png`);
+      const blob = await response.blob();
+      logoSrc = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      logoSrc = `${window.location.origin}/logo.png`;
+    }
+
+    const receiptContent = document.getElementById("receipt-print");
+    // Replace the local logo src with the base64 or absolute URL version
+    const contentHtml = receiptContent.innerHTML.replace(
+      /src="\/logo\.png"/,
+      `src="${logoSrc}"`
+    );
+
+    const receiptNo = payment.receiptNo || "N/A";
+    const date = new Date(payment.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+    const currentYear = new Date().getFullYear();
+
+    const w = window.open("", "_blank", "width=820,height=700");
+    w.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt ${receiptNo}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm 12mm;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      color: #1a1a2e;
+      background: #fff;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .receipt-wrapper {
+      max-width: 720px;
+      margin: 0 auto;
+      border: 2px solid #2563eb;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .receipt-header {
+      text-align: center;
+      padding: 28px 24px 20px;
+      background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+      border-bottom: 3px solid #2563eb;
+    }
+    .receipt-logo {
+      max-width: 72px;
+      margin: 0 auto 12px;
+      display: block;
+      border-radius: 8px;
+    }
+    .receipt-header h3 {
+      font-size: 1.1rem;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .receipt-header p {
+      font-size: 0.85rem;
+      color: #475569;
+      font-weight: 500;
+    }
+    .receipt-body-content {
+      padding: 20px 24px;
+    }
+    .receipt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .receipt-table td, .receipt-table th {
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+    .receipt-table td strong {
+      color: #1e293b;
+    }
+    .receipt-table th {
+      background: #2563eb;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .receipt-table tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+    .receipt-note {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    .receipt-footer {
+      text-align: center;
+      padding: 16px 24px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .receipt-amount-highlight {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    @media print {
+      body { padding: 0; }
+      .receipt-wrapper {
+        border: 2px solid #2563eb;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt-wrapper">
+    ${contentHtml}
+    <div class="receipt-footer">
+      <p>MLKPG College, Balrampur, Uttar Pradesh - 271201</p>
+      <p>Contact: 7800356804 | This is a computer generated receipt.</p>
+    </div>
+  </div>
+  <script>
+    window.onload = function() { setTimeout(function() { window.print(); }, 300); };
+  </script>
+</body>
+</html>`);
     w.document.close();
-    w.print();
   };
 
   return (
@@ -603,6 +756,7 @@ function ReceiptModal({ payment, student, onClose }) {
         </div>
         <div className="receipt-actions">
           <button className="btn btn-primary" onClick={printReceipt}><FaPrint /> Print</button>
+          <a href={`${API_BASE}/api/admin/receipts/${payment.receiptNo}/download`} className="btn btn-ghost" target="_blank" rel="noopener noreferrer"><FaDownload /> Download</a>
           <button className="btn btn-ghost" onClick={onClose}>Close</button>
         </div>
       </motion.div>
